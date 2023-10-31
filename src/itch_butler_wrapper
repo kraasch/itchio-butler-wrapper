@@ -1,0 +1,54 @@
+#!/bin/bash
+
+TYPE="$1"
+CHAN="$2"
+PAGE="$3"
+GAME="$4"
+
+INTERACTIVE=TRUE
+if $(test "$5" = '--non-interactive'); then
+	INTERACTIVE=FALSE
+fi
+
+NUM_FILE='./buildnumber.txt'
+CHAN_DIR='./channels'
+ITCH_API='https://itch.io/api/1/x/wharf/latest'
+
+VERSION_DOT=$(cat "$NUM_FILE")
+VERSION_MINUS=$(echo "$VERSION_DOT" | tr '.' '-')
+OUT_FILE="${TYPE}_${VERSION_MINUS}.zip"
+OUT_PATH="${CHAN_DIR}/${OUT_FILE}"
+IN_DIR="${CHAN_DIR}/${TYPE}"
+TARGET=${PAGE}/${GAME}
+zipped=FALSE
+
+echo '................................................................'
+if $(test "$INTERACTIVE" = 'TRUE'); then
+	echo 'Create a zip for yourself? (N/ctrl-c)'
+	echo 'NOTE: will remove old zip files for the same version number.'
+	read input
+else
+	input='no'
+fi
+if $(test -n "$input"); then
+	echo 'Creating your zip file.'
+	rm -f "${OUT_PATH}"
+	zip "${OUT_PATH}" -r "${IN_DIR}"/*
+fi
+
+echo '................................................................'
+if $(test "$INTERACTIVE" = 'TRUE'); then
+	echo 'Upload project? (Y/ctrl-c)'
+	read input
+else
+	input=''
+fi
+if $(test -z "$input"); then
+	echo 'Letting butler zip your project.'
+	butler push "${IN_DIR}" "${TARGET}:${CHAN}" --userversion-file "${NO_FILE}"
+fi
+
+echo '................................................................'
+echo 'Checking for latest version number.'
+curl -G -d "channel_name=${CHAN}" -d "target=${TARGET}" "${ITCH_API}"
+echo ''
